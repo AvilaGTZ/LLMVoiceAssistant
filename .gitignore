@@ -2,3 +2,6 @@ whisper.cpp/
 llama.cpp/
 build/
 models/*
+.vscode/
+
+.DS_Store
