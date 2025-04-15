@@ -32,4 +32,4 @@ add_executable(assistant src/main.cpp
                          src/assistantUtils.cpp)
 
 # Link libraries
-target_link_libraries(asistente whisper llama common ggml ggml-base common${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(assistant whisper llama common ggml ggml-base common${CMAKE_THREAD_LIBS_INIT})

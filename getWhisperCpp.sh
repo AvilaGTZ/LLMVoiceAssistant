@@ -7,7 +7,7 @@ NC='\033[0m' # No Color
 
 # Get the model name from command line argument or use default
 # Recommended to use 'large-v3'
-MODEL_NAME=${1:-base.en}
+MODEL_NAME=${1:-large-v3}
 
 # Base directory where whisper.cpp will be installed
 BASE_DIR="$PWD"
