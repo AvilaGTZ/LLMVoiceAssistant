@@ -1,0 +1,4 @@
+whisper.cpp/
+llama.cpp/
+build/
+models/*
