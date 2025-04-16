@@ -74,14 +74,18 @@ int main() {
     // 📝 Tokenize the prompt
     const bool is_first = llama_kv_self_used_cells(llama_ctx) == 0;
 
+    // Transform the whisper transcription string into llama_tokens
     const int n_prompt_tokens = -llama_tokenize(vocab, transcription.c_str(), transcription.size(), NULL, 0, is_first, true);
     std::vector<llama_token> prompt_tokens(n_prompt_tokens);
     if (llama_tokenize(vocab, transcription.c_str(), transcription.size(), prompt_tokens.data(), prompt_tokens.size(), is_first, true) < 0) {
         std::cout << "Failed to tokenize the prompt." << std::endl;
     }
 
-    int n_parallel = 8;
+    // How many prompts will be evaluated parallel
+    // Only a single propmt will be processed. 
+    int n_parallel = 1;
 
+    // Initialize the batch with the size of the calculated prompt tokens.
     llama_batch batch = llama_batch_init(std::max(prompt_tokens.size(), (size_t) n_parallel), 0, n_parallel);
 
     std::vector<llama_seq_id> seq_ids(n_parallel, 0);
@@ -89,11 +93,12 @@ int main() {
         seq_ids[i] = i;
     }
 
-    // 🧪 Evaluate the initial prompt
+    // 🧪 Add all the prompt tokens into the llama batch
     for (size_t i = 0; i < prompt_tokens.size(); ++i) {
         common_batch_add(batch, prompt_tokens[i], i, seq_ids, false);
     }
 
+    // Evaluate that the number of tokens in the batch is equal to the calculated prompt tokens.
     GGML_ASSERT(batch.n_tokens == (int) prompt_tokens.size());
 
     if (llama_model_has_encoder(model)) {
@@ -109,21 +114,31 @@ int main() {
 
         common_batch_clear(batch);
         common_batch_add(batch, decoder_start_token_id, 0, seq_ids, false);
+    } else {
+        std::cout << "LLaMA model has no encoder..." << std::endl;
     }
 
     // 🧮 LLaMA decode will output logits only for the last token of the prompt
     batch.logits[batch.n_tokens - 1] = true;
 
+    // llama_deocde produces logits for all its vocab tokens.
     if (llama_decode(llama_ctx, batch) != 0) {
         std::cout << "Failed to decode with LLaMA." << std::endl;
         return 1;
     }
 
+    // How many tokens are available in the llama model
     const int vocab_size = llama_vocab_n_tokens(vocab);
+
+    // Special token that indicates the end of the Llama answer.
+    // Will help during the llama_decode process to know if the 'answer is complete'
+    // If Llama generates this token means that 'llama considers that the answer is complete'
     const llama_token eos_token = llama_vocab_eos(vocab);
 
-    std::string respuesta;
+    // Init at token 0.
     llama_token token = 0;
+    // Number of predictions to avoid infinite text generation.
+    // This is being used in addition with eos_token
     int n_predict = 100;
 
     std::cout << "\nPrompt:\n" << transcription << std::endl;
@@ -153,13 +168,16 @@ int main() {
             break;
         }
 
+        // Get the string associated to the token and stored in buf
         char buf[128];
         int n = llama_token_to_piece(vocab, token, buf, sizeof(buf), 0, true);
         // Prepare batch with the new token
         common_batch_clear(batch);
+        // Add the previous token as a context for the new batch
         common_batch_add(batch, token, i + 1, seq_ids, false);
         batch.logits[0] = true;
 
+        // Generate the new set of loggits with the new batch containing the new context.
         if (llama_decode(llama_ctx, batch) != 0) {
             std::cerr << "Error at decoding next token..." << std::endl;
             break;
