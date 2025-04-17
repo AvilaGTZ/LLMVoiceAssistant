@@ -29,7 +29,9 @@ link_directories(
 
 # Create executable
 add_executable(assistant src/main.cpp
-                         src/assistantUtils.cpp)
+                         src/assistantUtils.cpp
+                         src/speechRecognition.cpp
+                         src/llmInference.cpp)
 
 # Link libraries
 target_link_libraries(assistant whisper llama common ggml ggml-base common${CMAKE_THREAD_LIBS_INIT})
